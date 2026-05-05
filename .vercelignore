@@ -1,0 +1,11 @@
+# MongoDB related (not needed for basic deployment)
+
+lib/mongodb.js
+models/
+
+# Development files
+
+README.md
+test-_.js
+download-_.js
+generate-\*.js

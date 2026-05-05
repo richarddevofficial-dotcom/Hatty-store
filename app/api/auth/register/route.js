@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import connectDB from "@/lib/mongodb";
-import User from "@/models/User";
+
+// Simple in-memory storage
+let users = [];
 
 export async function POST(request) {
   try {
-    await connectDB();
-
     const body = await request.json();
     const { fullName, email, phone, password } = body;
 
-    // Validate inputs
     if (!fullName || !email || !phone || !password) {
       return NextResponse.json(
         { error: "All fields are required" },
@@ -18,8 +17,8 @@ export async function POST(request) {
       );
     }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    // Check if user exists
+    const existingUser = users.find((u) => u.email === email);
     if (existingUser) {
       return NextResponse.json(
         { error: "User with this email already exists" },
@@ -27,41 +26,41 @@ export async function POST(request) {
       );
     }
 
-    // Create new user
-    const user = await User.create({
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create user
+    const newUser = {
+      id: Date.now().toString(),
       fullName,
       email,
       phone,
-      password,
-    });
+      password: hashedPassword,
+      createdAt: new Date().toISOString(),
+    };
 
-    // Generate JWT token
+    users.push(newUser);
+
+    // Generate token
     const token = jwt.sign(
-      { userId: user._id, email: user.email },
-      process.env.JWT_SECRET,
+      { userId: newUser.id, email: newUser.email },
+      process.env.JWT_SECRET || "hatty-store-secret-key-2024",
       { expiresIn: "7d" },
     );
+
+    const { password: _, ...userWithoutPassword } = newUser;
 
     return NextResponse.json(
       {
         message: "Registration successful",
-        user: user.toJSON(),
+        user: userWithoutPassword,
         token,
       },
       { status: 201 },
     );
   } catch (error) {
     console.error("Registration error:", error);
-
-    // Handle validation errors
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((err) => err.message);
-      return NextResponse.json({ error: messages.join(", ") }, { status: 400 });
-    }
-
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Registration failed" }, { status: 500 });
   }
 }

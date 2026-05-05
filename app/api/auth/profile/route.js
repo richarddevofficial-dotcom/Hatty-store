@@ -1,26 +1,27 @@
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-import connectDB from "@/lib/mongodb";
-import User from "@/models/User";
 
-export async function GET(request) {
+// Simple in-memory storage
+let orders = [];
+
+export async function POST(request) {
   try {
-    await connectDB();
-
     const authHeader = request.headers.get("authorization");
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "No token provided" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 },
+      );
     }
 
     const token = authHeader.split(" ")[1];
 
-    // Verify token
     let decoded;
     try {
       decoded = jwt.verify(
         token,
-        process.env.JWT_SECRET || "your-secret-key-change-in-production",
+        process.env.JWT_SECRET || "hatty-store-secret-key-2024",
       );
     } catch (error) {
       return NextResponse.json(
@@ -29,18 +30,76 @@ export async function GET(request) {
       );
     }
 
-    // Find user
-    const user = await User.findById(decoded.userId);
+    const body = await request.json();
+    const { items, totalAmount, cartCount } = body;
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!items || !items.length) {
+      return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
-    return NextResponse.json({ user: user.toJSON() }, { status: 200 });
-  } catch (error) {
-    console.error("Profile error:", error);
+    const order = {
+      id: Date.now().toString(),
+      orderNumber: `HATTY-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      userId: decoded.userId,
+      userEmail: decoded.email,
+      items,
+      totalAmount,
+      itemCount: cartCount || items.length,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+
+    orders.push(order);
+    console.log("Order created:", order.orderNumber);
+
     return NextResponse.json(
-      { error: "Internal server error" },
+      {
+        message: "Order created successfully",
+        order: {
+          orderNumber: order.orderNumber,
+          status: order.status,
+          totalAmount: order.totalAmount,
+          itemCount: order.itemCount,
+          createdAt: order.createdAt,
+        },
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error("Order error:", error);
+    return NextResponse.json(
+      { error: "Failed to create order" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function GET(request) {
+  try {
+    const authHeader = request.headers.get("authorization");
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 },
+      );
+    }
+
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "hatty-store-secret-key-2024",
+    );
+
+    const userOrders = orders.filter(
+      (order) => order.userId === decoded.userId,
+    );
+
+    return NextResponse.json({ orders: userOrders.reverse() }, { status: 200 });
+  } catch (error) {
+    console.error("Fetch orders error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch orders" },
       { status: 500 },
     );
   }
