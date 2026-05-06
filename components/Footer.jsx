@@ -159,10 +159,10 @@ export default function Footer() {
                   Visa
                 </div>
                 <div className="w-12 h-8 bg-gray-800 rounded flex items-center justify-center text-xs">
-                  MC
+                  MasterCard
                 </div>
                 <div className="w-12 h-8 bg-gray-800 rounded flex items-center justify-center text-xs">
-                  Amex
+                  Mobile Money - MTN
                 </div>
                 <div className="w-12 h-8 bg-gray-800 rounded flex items-center justify-center text-xs">
                   PayPal
