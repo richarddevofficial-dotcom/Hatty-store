@@ -23,7 +23,7 @@ export const metadata = {
   description:
     "Discover the latest trends in fashion. Elevate your style with Hatty Store.",
   icons: {
-    icon: "/favicon.svg",
+    icon: "/logo.svg",
     apple: "/logo.svg",
   },
 };
